@@ -63,12 +63,13 @@ public class GCMIntentService extends GCMBaseIntentService {
 		Bundle extras = intent.getExtras();
 		if (extras != null)
 		{
+			Boolean silent = isSilentNotification(extras);
+
 			// if we are in the foreground, just surface the payload, else post it to the statusbar
-            if (PushPlugin.isInForeground()) {
+            if (PushPlugin.isInForeground() || silent ) {
 				extras.putBoolean("foreground", true);
                 PushPlugin.sendExtras(extras);
-			}
-			else {
+			} else {
 				extras.putBoolean("foreground", false);
 
                 // Send a notification if there is a message
@@ -89,7 +90,7 @@ public class GCMIntentService extends GCMBaseIntentService {
 		notificationIntent.putExtra("pushBundle", extras);
 
 		PendingIntent contentIntent = PendingIntent.getActivity(this, 0, notificationIntent, PendingIntent.FLAG_UPDATE_CURRENT);
-		
+
 		int defaults = Notification.DEFAULT_ALL;
 
 		if (extras.getString("defaults") != null) {
@@ -97,7 +98,7 @@ public class GCMIntentService extends GCMBaseIntentService {
 				defaults = Integer.parseInt(extras.getString("defaults"));
 			} catch (NumberFormatException e) {}
 		}
-		
+
 		NotificationCompat.Builder mBuilder =
 			new NotificationCompat.Builder(context)
 				.setDefaults(defaults)
@@ -148,6 +149,32 @@ public class GCMIntentService extends GCMBaseIntentService {
 	@Override
 	public void onError(Context context, String errorId) {
 		Log.e(TAG, "onError - errorId: " + errorId);
+	}
+
+	private static Boolean isSilentNotification(Bundle extras) {
+		Boolean silent = false;
+		JSONObject payload = getPayload(extras);
+		try {
+			silent = Boolean.parseBoolean(payload.getString("silent"));
+		} catch (JSONException e) {
+			e.printStackTrace();
+		}
+		return silent;
+	}
+
+	private static JSONObject getPayload(Bundle extras){
+		JSONObject payload = null;
+		if (extras != null){
+			String payloadStr = extras.getString("payload");
+			if(payloadStr != null) {
+				try {
+					payload = new JSONObject(payloadStr);
+				} catch (JSONException e) {
+					e.printStackTrace();
+				}
+			}
+		}
+		return payload;
 	}
 
 }
